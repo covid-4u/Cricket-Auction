@@ -100,7 +100,7 @@ A default organizer account is created automatically:
        'type':       'What is your strongest skill in cricket?',
        'department': 'DEPARTMENT',
        'base_price': 'BASE_PRICE',
-       'photo':      None,
+       'photo':      None, # path to .jpg file
    }
    ```
 

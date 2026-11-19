@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Create Auction — CricBid Pro{% endblock %}
+{% block page_title %}Create Auction{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('auctions') }}" class="btn btn-ghost">← Back</a>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:600px">
+  <div class="card">
+    <form method="POST">
+      <div class="form-group">
+        <label>Auction Title *</label>
+        <input type="text" name="title" placeholder="e.g. CricBid IPL Season 1" required>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Budget Per Team (₹) *</label>
+          <input type="number" name="budget_per_team" value="1000" min="200" step="100" required>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">All teams will get this budget</div>
+        </div>
+        <div class="form-group">
+          <label>Bid Increment (₹) *</label>
+          <input type="number" name="bid_increment" value="50" min="10" step="10" required>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Each bid raises by this amount</div>
+        </div>
+      </div>
+
+      <div style="background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.2);border-radius:10px;padding:16px;margin-bottom:24px">
+        <div style="font-weight:600;color:var(--gold);margin-bottom:8px">⚡ Auction Rules</div>
+        <ul style="color:var(--muted);font-size:13px;line-height:2;padding-left:16px">
+          <li>All unsold players are added in random order</li>
+          <li>Each team bids with +₹increment per bid</li>
+          <li>Highest bidder wins the player</li>
+          <li>Organizer controls pace: Next Player → Bid → Sell/Unsold</li>
+          <li>Teams cannot exceed their remaining budget</li>
+        </ul>
+      </div>
+
+      <div style="background:rgba(108,99,255,0.05);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:24px">
+        <div style="font-weight:600;margin-bottom:8px">📋 Registered Teams ({{ teams|length }})</div>
+        {% if teams %}
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            {% for t in teams %}
+            <span style="background:var(--dark3);padding:4px 12px;border-radius:20px;font-size:13px">
+              {% if t.logo %}<img src="{{ url_for('static', filename=t.logo) }}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px">{% endif %}
+              {{ t.name }}
+            </span>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div style="color:var(--red);font-size:13px">⚠️ No teams registered! <a href="{{ url_for('add_team') }}" style="color:var(--accent)">Register teams first</a></div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-gold btn-lg" {{ 'disabled' if not teams }}>
+        🏆 Create & Open Auction Room
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if team else 'Register' }} Team — CricBid Pro{% endblock %}
+{% block page_title %}{{ 'Edit' if team else 'Register' }} Team{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('teams') }}" class="btn btn-ghost">← Back to Teams</a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.player-select-card {
+  display:flex; align-items:center; gap:10px; padding:10px 12px;
+  background:var(--dark3); border:1px solid var(--border); border-radius:9px;
+  margin-bottom:6px; cursor:pointer; transition:all 0.15s;
+}
+.player-select-card:hover { border-color:var(--accent); }
+.player-select-card.selected-cap { border-color:var(--green); background:rgba(0,230,118,0.07); }
+.player-select-card.selected-own { border-color:var(--gold); background:rgba(255,215,0,0.07); }
+.ps-avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0; background:var(--dark4); display:flex; align-items:center; justify-content:center; font-size:14px; }
+.ps-name   { font-weight:600; font-size:13px; }
+.ps-meta   { font-size:10px; color:var(--muted); margin-top:1px; }
+.ps-price  { font-family:'Teko',sans-serif; font-size:16px; color:var(--gold); flex-shrink:0; }
+
+.deduction-box {
+  background:rgba(255,215,0,0.07); border:1px solid rgba(255,215,0,0.25);
+  border-radius:10px; padding:14px; margin-top:12px;
+}
+.deduction-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:13px; }
+.deduction-row.total { border-top:1px solid rgba(255,215,0,0.2); margin-top:6px; padding-top:8px; font-weight:700; }
+
+/* Search box for player lists */
+.player-search { width:100%; padding:7px 10px; background:var(--dark4); border:1px solid var(--border); border-radius:7px; color:var(--text); font-size:12px; margin-bottom:8px; }
+.player-search:focus { outline:none; border-color:var(--accent); }
+.players-scroll { max-height:200px; overflow-y:auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:800px">
+  <div class="card">
+    <form method="POST" enctype="multipart/form-data" id="teamForm">
+
+      <div class="grid-2">
+        <!-- LEFT: Team details -->
+        <div>
+          <div class="form-group">
+            <label>Team Name *</label>
+            <input type="text" name="name" value="{{ team.name if team else '' }}" placeholder="e.g. Mumbai Mavericks" required>
+          </div>
+
+          <div class="form-group">
+            <label>Auction Budget (₹) *</label>
+            <input type="number" name="budget" id="budgetInput"
+                   value="{{ team.budget if team else 5000000 }}"
+                   min="100000" step="100000" required
+                   oninput="calcDeduction()">
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">Total budget assigned to this team</div>
+          </div>
+
+          <div class="form-group">
+            <label>Team Logo</label>
+            <div class="photo-upload-area" onclick="document.getElementById('logoInput').click()">
+              {% if team and team.logo %}
+                <img src="{{ url_for('static', filename=team.logo) }}" id="logoPreview" style="width:90px;height:90px;border-radius:50%;object-fit:cover;margin:0 auto 8px;display:block">
+              {% else %}
+                <img id="logoPreview" style="width:90px;height:90px;border-radius:50%;object-fit:cover;margin:0 auto 8px;display:none">
+              {% endif %}
+              <div id="logoUploadText" {% if team and team.logo %}style="display:none"{% endif %}>
+                <div style="font-size:36px;margin-bottom:6px">🛡️</div>
+                <div style="color:var(--muted);font-size:12px">Click to upload logo</div>
+              </div>
+              <input type="file" name="logo" id="logoInput" accept="image/*" style="display:none" onchange="previewLogo(this)">
+            </div>
+          </div>
+
+          <!-- DEDUCTION SUMMARY -->
+          <div class="deduction-box" id="deductionBox">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">💰 Budget Breakdown</div>
+            <div class="deduction-row">
+              <span>Total Budget</span>
+              <span style="color:var(--text)" id="dBudget">₹0</span>
+            </div>
+            <div class="deduction-row" id="dOwnerRow" style="display:none">
+              <span>− Owner (<span id="dOwnerName">—</span>)</span>
+              <span style="color:var(--red)" id="dOwnerAmt">₹0</span>
+            </div>
+            <div class="deduction-row" id="dCapRow" style="display:none">
+              <span>− Captain (<span id="dCapName">—</span>)</span>
+              <span style="color:var(--red)" id="dCapAmt">₹0</span>
+            </div>
+            <div class="deduction-row total">
+              <span>Remaining for Auction</span>
+              <span style="color:var(--gold);font-family:'Teko',sans-serif;font-size:22px" id="dRemaining">₹0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Captain + Owner selection -->
+        <div>
+
+          <!-- CAPTAIN (from registered players) -->
+          <div class="form-group">
+            <label>🏏 Captain * <span style="font-weight:400;color:var(--muted)">(select from players)</span></label>
+            <input type="hidden" name="captain_player_id" id="captainId"
+                   value="{{ team.captain_player_id if team and team.captain_player_id else '' }}">
+            <input class="player-search" type="text" id="capSearch" placeholder="🔍 Search captain..."
+                   oninput="filterPlayers('cap')" {% if not players %}style="display:none"{% endif %}>
+            {% if players %}
+            <div class="players-scroll" id="capList">
+              {% for p in players %}
+              <div class="player-select-card {% if team and team.captain_player_id == p.id %}selected-cap{% endif %}"
+                   id="cap_card_{{ p.id }}"
+                   data-pid="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.base_price }}"
+                   data-type="{{ p.type }}" data-dept="{{ p.department }}"
+                   onclick="selectCaptain({{ p.id }}, '{{ p.name }}', {{ p.base_price }})">
+                {% if p.photo %}
+                  <img src="{{ url_for('static', filename=p.photo) }}" class="ps-avatar">
+                {% else %}
+                  <div class="ps-avatar">🧑</div>
+                {% endif %}
+                <div style="flex:1;min-width:0">
+                  <div class="ps-name">{{ p.name }}</div>
+                  <div class="ps-meta">{{ p.type }} · {{ p.department }}</div>
+                </div>
+                <div class="ps-price">₹{{ '{:,}'.format(p.base_price) }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div style="padding:14px;background:var(--dark3);border-radius:8px;border:1px solid var(--border);color:var(--muted);font-size:12px;text-align:center">
+              No players registered yet.<br>
+              <a href="{{ url_for('add_player') }}" style="color:var(--accent)">Register players first →</a>
+            </div>
+            {% endif %}
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">Captain's base price is deducted from team budget automatically</div>
+          </div>
+
+          <!-- OWNER (from registered players) -->
+          <div class="form-group">
+            <label>👑 Owner * <span style="font-weight:400;color:var(--muted)">(select from players)</span></label>
+            <input type="hidden" name="owner_player_id" id="ownerId"
+                   value="{{ team.owner_player_id if team and team.owner_player_id else '' }}">
+            <input class="player-search" type="text" id="ownSearch" placeholder="🔍 Search owner..."
+                   oninput="filterPlayers('own')" {% if not players %}style="display:none"{% endif %}>
+            {% if players %}
+            <div class="players-scroll" id="ownList">
+              {% for p in players %}
+              <div class="player-select-card {% if team and team.owner_player_id == p.id %}selected-own{% endif %}"
+                   id="own_card_{{ p.id }}"
+                   data-pid="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.base_price }}"
+                   data-type="{{ p.type }}" data-dept="{{ p.department }}"
+                   onclick="selectOwner({{ p.id }}, '{{ p.name }}', {{ p.base_price }})">
+                {% if p.photo %}
+                  <img src="{{ url_for('static', filename=p.photo) }}" class="ps-avatar">
+                {% else %}
+                  <div class="ps-avatar">🧑</div>
+                {% endif %}
+                <div style="flex:1;min-width:0">
+                  <div class="ps-name">{{ p.name }}</div>
+                  <div class="ps-meta">{{ p.type }} · {{ p.department }}</div>
+                </div>
+                <div class="ps-price">₹{{ '{:,}'.format(p.base_price) }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div style="padding:14px;background:var(--dark3);border-radius:8px;border:1px solid var(--border);color:var(--muted);font-size:12px;text-align:center">
+              No players registered yet.
+            </div>
+            {% endif %}
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">Owner's base price is also deducted (unless same as captain)</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:16px">
+        <button type="submit" class="btn btn-gold btn-lg">
+          {{ '💾 Update Team' if team else '🛡️ Register Team' }}
+        </button>
+        <a href="{{ url_for('teams') }}" class="btn btn-ghost btn-lg">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let capId = {{ team.captain_player_id if team and team.captain_player_id else 'null' }};
+let ownId = {{ team.owner_player_id if team and team.owner_player_id else 'null' }};
+let capPrice = 0, ownPrice = 0, capName = '', ownName = '';
+
+// Init from existing team data
+{% if team and team.captain_player_id %}
+(function() {
+  const card = document.getElementById('cap_card_{{ team.captain_player_id }}');
+  if (card) {
+    capPrice = parseInt(card.dataset.price) || 0;
+    capName  = card.dataset.name || '';
+  }
+})();
+{% endif %}
+{% if team and team.owner_player_id %}
+(function() {
+  const card = document.getElementById('own_card_{{ team.owner_player_id }}');
+  if (card) {
+    ownPrice = parseInt(card.dataset.price) || 0;
+    ownName  = card.dataset.name || '';
+  }
+})();
+{% endif %}
+
+function selectCaptain(pid, name, price) {
+  // Remove previous highlight
+  document.querySelectorAll('.player-select-card').forEach(c => c.classList.remove('selected-cap'));
+  // Toggle off if same clicked
+  if (capId === pid) {
+    capId = null; capPrice = 0; capName = '';
+    document.getElementById('captainId').value = '';
+  } else {
+    capId = pid; capPrice = price; capName = name;
+    document.getElementById('captainId').value = pid;
+    document.getElementById('cap_card_' + pid)?.classList.add('selected-cap');
+  }
+  calcDeduction();
+}
+
+function selectOwner(pid, name, price) {
+  document.querySelectorAll('.player-select-card').forEach(c => c.classList.remove('selected-own'));
+  if (ownId === pid) {
+    ownId = null; ownPrice = 0; ownName = '';
+    document.getElementById('ownerId').value = '';
+  } else {
+    ownId = pid; ownPrice = price; ownName = name;
+    document.getElementById('ownerId').value = pid;
+    document.getElementById('own_card_' + pid)?.classList.add('selected-own');
+  }
+  calcDeduction();
+}
+
+function calcDeduction() {
+  const budget = parseInt(document.getElementById('budgetInput').value) || 0;
+  // Don't double-deduct if captain and owner are same person
+  const ownerDeduct = (ownId && ownId !== capId) ? ownPrice : 0;
+  const capDeduct   = capId ? capPrice : 0;
+  const remaining   = Math.max(0, budget - capDeduct - ownerDeduct);
+
+  document.getElementById('dBudget').textContent    = '₹' + budget.toLocaleString('en-IN');
+  document.getElementById('dRemaining').textContent = '₹' + remaining.toLocaleString('en-IN');
+
+  if (capId) {
+    document.getElementById('dCapRow').style.display  = '';
+    document.getElementById('dCapName').textContent   = capName;
+    document.getElementById('dCapAmt').textContent    = '−₹' + capDeduct.toLocaleString('en-IN');
+  } else {
+    document.getElementById('dCapRow').style.display = 'none';
+  }
+  if (ownId && ownId !== capId) {
+    document.getElementById('dOwnerRow').style.display = '';
+    document.getElementById('dOwnerName').textContent  = ownName;
+    document.getElementById('dOwnerAmt').textContent   = '−₹' + ownerDeduct.toLocaleString('en-IN');
+  } else {
+    document.getElementById('dOwnerRow').style.display = 'none';
+  }
+}
+
+// Re-apply both highlights on load (for edit mode)
+if (capId) document.getElementById('cap_card_' + capId)?.classList.add('selected-cap');
+if (ownId) document.getElementById('own_card_' + ownId)?.classList.add('selected-own');
+calcDeduction();
+
+// Search/filter player lists
+function filterPlayers(role) {
+  const q   = document.getElementById(role === 'cap' ? 'capSearch' : 'ownSearch').value.toLowerCase();
+  const list = document.getElementById(role === 'cap' ? 'capList' : 'ownList');
+  list.querySelectorAll('.player-select-card').forEach(card => {
+    const match = card.dataset.name.toLowerCase().includes(q)
+                || card.dataset.type.toLowerCase().includes(q)
+                || card.dataset.dept.toLowerCase().includes(q);
+    card.style.display = match ? '' : 'none';
+  });
+}
+
+// Logo preview
+function previewLogo(input) {
+  if (input.files && input.files[0]) {
+    const r = new FileReader();
+    r.onload = e => {
+      document.getElementById('logoPreview').src = e.target.result;
+      document.getElementById('logoPreview').style.display = 'block';
+      document.getElementById('logoUploadText').style.display = 'none';
+    };
+    r.readAsDataURL(input.files[0]);
+  }
+}
+
+// Form validation — captain required
+document.getElementById('teamForm').addEventListener('submit', function(e) {
+  if (!document.getElementById('captainId').value) {
+    e.preventDefault();
+    alert('Please select a Captain from the player list.');
+    return false;
+  }
+  if (!document.getElementById('ownerId').value) {
+    e.preventDefault();
+    alert('Please select an Owner from the player list.');
+    return false;
+  }
+});
+</script>
+{% endblock %}

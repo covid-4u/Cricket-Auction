@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔴 LIVE — {{ auction.title }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #FFD700; --gold2: #FFA500; --dark: #060608; --dark2: #0e0e14;
+  --dark3: #16161f; --dark4: #1e1e28; --accent: #6C63FF; --accent2: #FF4D6D;
+  --green: #00E676; --red: #FF1744; --text: #e8e8f0; --muted: #5a5a78;
+  --border: rgba(108,99,255,0.18);
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; background:var(--dark); color:var(--text); font-family:'Inter',sans-serif; overflow:hidden; }
+
+/* BIG SCREEN LAYOUT — 3 columns now */
+.screen { height:100vh; display:grid; grid-template-rows:auto 1fr auto; }
+.main-area { display:grid; grid-template-columns:280px 1fr 320px; gap:0; overflow:hidden; }
+
+/* HEADER */
+.header {
+  background: var(--dark2); border-bottom:1px solid var(--border);
+  padding:12px 28px; display:flex; align-items:center; justify-content:space-between;
+}
+.header-title { font-family:'Teko',sans-serif; font-size:30px; font-weight:700; letter-spacing:2px; }
+.header-title span { background:linear-gradient(135deg,var(--gold),var(--gold2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.live-dot { width:10px; height:10px; border-radius:50%; background:var(--red); box-shadow:0 0 10px var(--red); animation:blink 1.2s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* LEFT PANEL: Player Queue */
+.queue-panel {
+  background:var(--dark2); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.panel-header {
+  padding:14px 16px 10px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.panel-title { font-family:'Teko',sans-serif; font-size:18px; letter-spacing:1px; color:var(--muted); }
+.panel-count {
+  font-family:'Teko',sans-serif; font-size:22px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+
+/* Queue tabs */
+.qtabs { display:flex; background:var(--dark3); border-bottom:1px solid var(--border); }
+.qtab {
+  flex:1; padding:8px 6px; text-align:center; cursor:pointer;
+  font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700;
+  letter-spacing:0.5px; color:var(--muted); transition:all 0.2s;
+  text-transform:uppercase; border-bottom:2px solid transparent;
+}
+.qtab.active { color:var(--gold); border-bottom-color:var(--gold); background:rgba(255,215,0,0.04); }
+
+.queue-scroll { flex:1; overflow-y:auto; padding:8px; }
+
+/* Queue player card */
+.queue-player {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 10px; border-radius:8px; margin-bottom:5px;
+  background:var(--dark3); border:1px solid rgba(255,255,255,0.04);
+  transition:all 0.2s; position:relative;
+}
+.queue-player:first-child {
+  background:rgba(255,215,0,0.06);
+  border-color:rgba(255,215,0,0.2);
+}
+.queue-player:first-child .queue-order { color:var(--gold); }
+.queue-order {
+  font-family:'Teko',sans-serif; font-size:16px; color:var(--muted);
+  width:20px; text-align:center; flex-shrink:0;
+}
+.queue-avatar {
+  width:34px; height:34px; border-radius:50%; object-fit:cover;
+  border:1px solid var(--border); flex-shrink:0; background:var(--dark4);
+  display:flex; align-items:center; justify-content:center; font-size:16px;
+}
+.queue-info { flex:1; min-width:0; }
+.queue-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.queue-meta { font-size:10px; color:var(--muted); margin-top:1px; }
+.queue-price { font-family:'Teko',sans-serif; font-size:15px; color:var(--gold); flex-shrink:0; }
+
+/* Sold player chip in queue */
+.sold-player {
+  display:flex; align-items:center; gap:8px;
+  padding:7px 10px; border-radius:8px; margin-bottom:5px;
+  background:rgba(0,230,118,0.04); border:1px solid rgba(0,230,118,0.1);
+}
+.sold-player-name { font-size:11px; font-weight:600; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sold-player-price { font-family:'Teko',sans-serif; font-size:14px; color:var(--green); flex-shrink:0; }
+.sold-team-badge {
+  font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; max-width:80px;
+}
+
+/* TYPE color dots */
+.type-dot {
+  width:6px; height:6px; border-radius:50%; flex-shrink:0;
+}
+.type-bat { background:#FF6B6B; }
+.type-bowl { background:#4ECDC4; }
+.type-field { background:#45B7D1; }
+.type-all { background:#FFD700; }
+.type-wk { background:#A78BFA; }
+
+/* SPOTLIGHT */
+.spotlight-zone {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:32px; position:relative; overflow:hidden;
+  background: radial-gradient(ellipse at center, rgba(108,99,255,0.06) 0%, transparent 70%);
+}
+.spotlight-zone::before {
+  content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:500px; height:500px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,215,0,0.04) 0%, transparent 70%);
+  pointer-events:none;
+}
+
+/* PLAYER CARD - BIG */
+.big-player-card {
+  display:flex; gap:32px; align-items:center;
+  background:rgba(255,255,255,0.02); border:1px solid rgba(255,215,0,0.2);
+  border-radius:20px; padding:28px 36px;
+  box-shadow:0 0 60px rgba(255,215,0,0.06);
+  width:100%; max-width:700px;
+  position:relative; z-index:1;
+}
+.big-player-photo {
+  width:170px; height:210px; border-radius:14px; object-fit:cover;
+  border:3px solid var(--gold); box-shadow:0 0 30px rgba(255,215,0,0.2);
+  background:var(--dark3); display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.big-player-name { font-family:'Teko',sans-serif; font-size:64px; font-weight:700; line-height:1; }
+.big-player-type { font-family:'Rajdhani',sans-serif; font-size:18px; color:var(--gold); text-transform:uppercase; letter-spacing:3px; margin:6px 0; }
+.big-player-dept { color:var(--muted); font-size:15px; }
+.bid-display {
+  background:linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,165,0,0.04));
+  border:2px solid rgba(255,215,0,0.35); border-radius:14px;
+  padding:18px 26px; margin-top:16px; display:inline-block;
+}
+.bid-label-big { font-size:11px; text-transform:uppercase; letter-spacing:2px; color:var(--muted); }
+.bid-amount-big {
+  font-family:'Teko',sans-serif; font-size:72px; color:var(--gold);
+  font-weight:700; line-height:1;
+}
+@keyframes bidPop { 0%{transform:scale(0.85)} 100%{transform:scale(1)} }
+.bid-team-big { font-size:16px; color:var(--green); font-weight:700; margin-top:4px; }
+
+/* WAITING */
+.waiting-big {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; position:relative; z-index:1;
+}
+.waiting-big .icon { font-size:100px; animation:float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+.waiting-big h2 { font-family:'Teko',sans-serif; font-size:52px; color:var(--muted); margin-top:16px; }
+
+/* RIGHT SIDEBAR */
+.sidebar-zone {
+  background:var(--dark2); border-left:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.sidebar-section { padding:14px 16px 10px; border-bottom:1px solid var(--border); }
+.sidebar-section-title { font-family:'Teko',sans-serif; font-size:16px; color:var(--muted); letter-spacing:1px; margin-bottom:10px; }
+.budget-row {
+  display:flex; align-items:center; gap:8px; padding:7px 8px;
+  border-radius:7px; margin-bottom:4px; transition:all 0.3s;
+  border:1px solid transparent;
+}
+.budget-row.leading {
+  background:rgba(0,230,118,0.08);
+  border-color:rgba(0,230,118,0.2);
+}
+.budget-name { font-size:12px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.budget-val { font-family:'Teko',sans-serif; font-size:18px; color:var(--gold); }
+.budget-bar-wrap { height:3px; background:var(--dark4); border-radius:2px; overflow:hidden; margin-top:3px; }
+.budget-bar-fill { height:100%; background:linear-gradient(90deg,var(--gold),var(--gold2)); transition:width 0.5s; }
+
+.log-zone { flex:1; overflow-y:auto; padding:0 14px 10px; }
+.log-item { padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:11px; }
+.log-item:first-child { color:var(--gold); font-weight:600; }
+.log-amount { font-family:'Teko',sans-serif; font-size:16px; color:var(--gold2); }
+
+/* FOOTER */
+.footer {
+  background:var(--dark2); border-top:1px solid var(--border);
+  padding:8px 28px; display:flex; align-items:center; gap:20px;
+}
+.footer-stat { display:flex; align-items:center; gap:6px; font-size:12px; }
+.footer-stat-val { font-family:'Teko',sans-serif; font-size:20px; }
+.ticker-sep { color:var(--muted); }
+
+/* SOLD OVERLAY */
+.sold-overlay {
+  display:none; position:fixed; inset:0; z-index:100;
+  background:rgba(0,0,0,0.92); backdrop-filter:blur(12px);
+  align-items:center; justify-content:center; flex-direction:column;
+  text-align:center;
+}
+.sold-overlay.show { display:flex; animation:fadeIn 0.4s; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.sold-big {
+  font-family:'Teko',sans-serif; font-size:130px; font-weight:700;
+  color:var(--gold); line-height:1; letter-spacing:8px;
+  text-shadow:0 0 60px rgba(255,215,0,0.5);
+  animation:soldBounce 0.6s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+@keyframes soldBounce { 0%{transform:scale(0);opacity:0} 60%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+.sold-player-big { font-family:'Teko',sans-serif; font-size:52px; color:white; margin-top:6px; }
+.sold-price-big { font-family:'Teko',sans-serif; font-size:72px; color:var(--gold); }
+.sold-team-big { font-size:22px; color:var(--green); font-weight:700; }
+.fireworks { font-size:50px; display:flex; gap:18px; margin-top:20px; }
+.fireworks span { animation:spin 1.5s linear infinite; }
+.fireworks span:nth-child(2) { animation-delay:0.3s; }
+.fireworks span:nth-child(3) { animation-delay:0.6s; }
+@keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<div class="screen">
+  <!-- HEADER -->
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:14px">
+      <span style="font-size:22px">🏏</span>
+      <div>
+        <div class="header-title">🏆 <span>{{ auction.title }}</span></div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">CricBid Pro · Live Spectator View</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="live-dot" id="liveDot"></div>
+      <span id="liveLabel" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--red)">LIVE</span>
+      <span style="color:var(--muted);margin:0 8px">|</span>
+      <span style="font-family:'Teko',sans-serif;font-size:20px">
+        <span style="color:var(--green)" id="hSold">0</span>
+        <span style="color:var(--muted);font-size:14px"> sold &nbsp;</span>
+        <span style="color:var(--gold2)" id="hPending">—</span>
+        <span style="color:var(--muted);font-size:14px"> pending</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- MAIN: 3-column layout -->
+  <div class="main-area">
+
+    <!-- LEFT: Player Queue Panel -->
+    <div class="queue-panel">
+      <div class="panel-header">
+        <span class="panel-title">📋 PLAYER QUEUE</span>
+        <span class="panel-count" id="queueCount">—</span>
+      </div>
+      <!-- Tabs: Pending / Sold -->
+      <div class="qtabs">
+        <div class="qtab active" id="tabPending" onclick="switchTab('pending')">⏳ Pending</div>
+        <div class="qtab" id="tabSold" onclick="switchTab('sold')">✅ Sold</div>
+        <div class="qtab" id="tabUnsold" onclick="switchTab('unsold')">❌ Unsold</div>
+      </div>
+      <div class="queue-scroll" id="queueScroll">
+        <div style="text-align:center;padding:40px;color:var(--muted)">
+          <div style="font-size:40px;margin-bottom:8px">⏳</div>
+          Loading...
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: Spotlight -->
+    <div class="spotlight-zone" id="spotlightZone">
+      <div class="waiting-big" id="waitingBig">
+        <div class="icon">🏏</div>
+        <h2>AUCTION STARTING SOON</h2>
+        <div style="color:var(--muted);font-size:16px;margin-top:8px">Stand by...</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Budgets + Bid Log -->
+    <div class="sidebar-zone">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">💰 TEAM BUDGETS</div>
+        <div id="teamBudgets">
+          {% for t in teams %}
+          <div class="budget-row" id="budRow{{ t.id }}">
+            {% if t.logo %}
+              <img src="{{ url_for('static', filename=t.logo) }}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0">
+            {% else %}
+              <div style="width:26px;height:26px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🛡</div>
+            {% endif %}
+            <div style="flex:1;min-width:0">
+              <div class="budget-name">{{ t.name }}</div>
+              <div class="budget-bar-wrap">
+                <div class="budget-bar-fill" id="budBar{{ t.id }}" style="width:100%"></div>
+              </div>
+            </div>
+            <div class="budget-val" id="bud{{ t.id }}">₹{{ t.remaining_budget }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div style="padding:10px 16px 6px;border-bottom:1px solid var(--border);font-family:'Teko',sans-serif;font-size:15px;color:var(--muted);letter-spacing:1px">
+        📜 BID LOG
+      </div>
+      <div class="log-zone" id="logZone">
+        <div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">Waiting for bids...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-stat">
+      <span>🔨</span>
+      <span class="footer-stat-val" id="fSold" style="color:var(--green)">0</span>
+      <span style="color:var(--muted)">Sold</span>
+    </div>
+    <span class="ticker-sep">|</span>
+    <div class="footer-stat">
+      <span>⏳</span>
+      <span class="footer-stat-val" id="fPending" style="color:var(--gold2)">—</span>
+      <span style="color:var(--muted)">Pending</span>
+    </div>
+    <span class="ticker-sep">|</span>
+    <div class="footer-stat">
+      <span>❌</span>
+      <span class="footer-stat-val" id="fUnsold" style="color:var(--red)">0</span>
+      <span style="color:var(--muted)">Unsold</span>
+    </div>
+    <span class="ticker-sep">|</span>
+    <div class="footer-stat">
+      <span>⚡</span>
+      <span style="color:var(--muted)">Increment:</span>
+      <span class="footer-stat-val" style="color:var(--accent)">₹{{ auction.bid_increment }}</span>
+    </div>
+    <div style="margin-left:auto;font-size:11px;color:var(--muted)" id="lastUpdate">Connecting...</div>
+  </div>
+</div>
+
+<!-- SOLD OVERLAY -->
+<div class="sold-overlay" id="soldOverlay">
+  <div class="sold-big">SOLD!</div>
+  <div class="sold-player-big" id="ovPlayerName">Player</div>
+  <div class="sold-price-big" id="ovPrice">₹0</div>
+  <div class="sold-team-big" id="ovTeam">Team</div>
+  <div class="fireworks"><span>🎉</span><span>🏆</span><span>⭐</span></div>
+</div>
+
+<script>
+const AID = {{ auction.id }};
+let lastBid = 0, lastPlayer = null, lastStatus = '', currentTab = 'pending';
+let cachedPending = [], cachedSold = [], cachedUnsold = [];
+let teamBudgets = {}; // store budget totals for bar calc
+
+// Team initial budgets from template
+{% for t in teams %}
+teamBudgets[{{ t.id }}] = { budget: {{ t.budget }}, remaining: {{ t.remaining_budget }} };
+{% endfor %}
+
+// Tab switcher
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabPending').classList.toggle('active', tab === 'pending');
+  document.getElementById('tabSold').classList.toggle('active', tab === 'sold');
+  document.getElementById('tabUnsold').classList.toggle('active', tab === 'unsold');
+  renderQueue();
+}
+
+// Type → color class
+const typeClass = {
+  'Batsman': 'type-bat',
+  'Bowler': 'type-bowl',
+  'Fielder': 'type-field',
+  'All-Rounder': 'type-all',
+  'Wicket-Keeper': 'type-wk'
+};
+
+function renderQueue() {
+  const scroll = document.getElementById('queueScroll');
+  if (currentTab === 'pending') {
+    document.getElementById('queueCount').textContent = cachedPending.length;
+    if (cachedPending.length === 0) {
+      scroll.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">🎉</div><div style="font-size:13px">Queue is empty!</div></div>`;
+      return;
+    }
+    scroll.innerHTML = cachedPending.map((p, i) => {
+      const dotClass = typeClass[p.type] || 'type-all';
+      const avatarHtml = p.photo
+        ? `<img src="/static/${p.photo}" class="queue-avatar">`
+        : `<div class="queue-avatar">🧑</div>`;
+      const isNext = i === 0;
+      return `
+        <div class="queue-player" style="${isNext ? 'border-color:rgba(255,215,0,0.3);' : ''}">
+          <span class="queue-order">${i + 1}</span>
+          ${avatarHtml}
+          <div class="queue-info">
+            <div class="queue-name" title="${p.name}">${p.name}</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:2px">
+              <span class="type-dot ${dotClass}"></span>
+              <span class="queue-meta">${p.type} · ${p.department}</span>
+            </div>
+          </div>
+          <span class="queue-price">₹${p.base_price}</span>
+        </div>`;
+    }).join('');
+  } else if (currentTab === 'sold') {
+    document.getElementById('queueCount').textContent = cachedSold.length;
+    if (cachedSold.length === 0) {
+      scroll.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">⏳</div><div style="font-size:13px">No players sold yet</div></div>`;
+      return;
+    }
+    scroll.innerHTML = cachedSold.map(p => {
+      const avatarHtml = p.photo
+        ? `<img src="/static/${p.photo}" class="queue-avatar" style="border-color:rgba(0,230,118,0.3)">`
+        : `<div class="queue-avatar" style="border-color:rgba(0,230,118,0.2)">🧑</div>`;
+      const teamLogoHtml = p.team_logo
+        ? `<img src="/static/${p.team_logo}" style="width:16px;height:16px;border-radius:50%;object-fit:cover;margin-right:3px;vertical-align:middle">`
+        : '';
+      return `
+        <div class="sold-player">
+          ${avatarHtml}
+          <div style="flex:1;min-width:0">
+            <div class="sold-player-name" title="${p.name}">${p.name}</div>
+            <div class="sold-team-badge">${teamLogoHtml}${p.team_name || 'Unknown'}</div>
+          </div>
+          <span class="sold-player-price">₹${p.sold_price}</span>
+        </div>`;
+    }).join('');
+  } else {
+    // Unsold tab
+    document.getElementById('queueCount').textContent = cachedUnsold.length;
+    if (cachedUnsold.length === 0) {
+      scroll.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:36px;margin-bottom:8px">✨</div><div style="font-size:13px">No unsold players</div></div>`;
+      return;
+    }
+    scroll.innerHTML = cachedUnsold.map(p => {
+      const dotClass = typeClass[p.type] || 'type-all';
+      const avatarHtml = p.photo
+        ? `<img src="/static/${p.photo}" class="queue-avatar" style="opacity:0.6;border-color:rgba(255,23,68,0.3)">`
+        : `<div class="queue-avatar" style="opacity:0.6;border-color:rgba(255,23,68,0.2)">🧑</div>`;
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;margin-bottom:5px;background:rgba(255,23,68,0.04);border:1px solid rgba(255,23,68,0.12)">
+          ${avatarHtml}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.8">${p.name}</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:2px">
+              <span class="type-dot ${dotClass}"></span>
+              <span class="queue-meta">${p.type} · ${p.department}</span>
+            </div>
+          </div>
+          <span style="font-family:'Teko',sans-serif;font-size:14px;color:var(--red);flex-shrink:0">₹${p.base_price}</span>
+        </div>`;
+    }).join('');
+  }
+}
+
+function renderSpotlight(player, bid, bidder) {
+  const photoHtml = player.photo
+    ? `<img src="/static/${player.photo}" class="big-player-photo">`
+    : `<div class="big-player-photo"><span style="font-size:70px;opacity:0.25">🧑</span></div>`;
+  const bidderText = bidder ? `🏅 ${bidder.name}` : 'Awaiting first bid...';
+  document.getElementById('spotlightZone').innerHTML = `
+    <div class="big-player-card">
+      ${photoHtml}
+      <div>
+        <div class="big-player-name">${player.name}</div>
+        <div class="big-player-type">${player.type}</div>
+        <div class="big-player-dept">🏢 ${player.department}</div>
+        <div class="bid-display">
+          <div class="bid-label-big">Current Bid</div>
+          <div class="bid-amount-big" id="liveBidAmt">₹${bid}</div>
+          <div class="bid-team-big" id="liveBidTeam">${bidderText}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderWaiting(msg, sub) {
+  document.getElementById('spotlightZone').innerHTML = `
+    <div class="waiting-big">
+      <div class="icon">🏏</div>
+      <h2>${msg}</h2>
+      ${sub ? `<div style="color:var(--muted);font-size:15px;margin-top:8px">${sub}</div>` : ''}
+    </div>`;
+}
+
+function showSoldOverlay(name, price, team) {
+  document.getElementById('ovPlayerName').textContent = name;
+  document.getElementById('ovPrice').textContent = '₹' + price;
+  document.getElementById('ovTeam').textContent = '🎊 ' + team;
+  const ov = document.getElementById('soldOverlay');
+  ov.classList.add('show');
+  setTimeout(() => ov.classList.remove('show'), 3800);
+}
+
+async function poll() {
+  try {
+    const r = await fetch(`/api/auction/${AID}/full_state`);
+    const d = await r.json();
+
+    document.getElementById('lastUpdate').textContent = 'Live · ' + new Date().toLocaleTimeString();
+    document.getElementById('fSold').textContent = d.sold_count;
+    document.getElementById('fPending').textContent = d.pending_count;
+    document.getElementById('fUnsold').textContent = d.unsold_count;
+    document.getElementById('hSold').textContent = d.sold_count;
+    document.getElementById('hPending').textContent = d.pending_count;
+
+    // Update team budgets
+    d.teams.forEach(t => {
+      const el = document.getElementById('bud' + t.id);
+      if (el) el.textContent = '₹' + t.remaining_budget;
+      const row = document.getElementById('budRow' + t.id);
+      if (row) row.classList.toggle('leading', !!(d.current_bidder && d.current_bidder.id === t.id));
+      // Update budget bar
+      const bar = document.getElementById('budBar' + t.id);
+      if (bar && t.budget > 0) {
+        bar.style.width = Math.round(t.remaining_budget / t.budget * 100) + '%';
+      }
+    });
+
+    // Update bid log
+    if (d.bid_log && d.bid_log.length > 0) {
+      document.getElementById('logZone').innerHTML = d.bid_log.map((b, i) => `
+        <div class="log-item">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span>${i === 0 ? '🔥 ' : ''}<strong>${b.team_name}</strong><br><span style="color:var(--muted);font-size:10px">${b.player_name}</span></span>
+            <span class="log-amount">₹${b.bid_amount}</span>
+          </div>
+        </div>`).join('');
+    }
+
+    // Update queue data
+    const prevPendingLen = cachedPending.length;
+    const prevSoldLen = cachedSold.length;
+    const prevUnsoldLen = cachedUnsold.length;
+    if (d.pending_players) cachedPending = d.pending_players;
+    if (d.sold_players) cachedSold = d.sold_players;
+    if (d.unsold_players) cachedUnsold = d.unsold_players;
+
+    // Re-render queue if data changed
+    const dataChanged = (cachedPending.length !== prevPendingLen || cachedSold.length !== prevSoldLen || cachedUnsold.length !== prevUnsoldLen);
+    if (dataChanged || !prevPendingLen) {
+      renderQueue();
+    }
+    // Auto-switch to unsold tab if new unsold player added
+    if (cachedUnsold.length > prevUnsoldLen && currentTab !== 'unsold') {
+      // pulse the unsold tab label
+      const tabEl = document.getElementById('tabUnsold');
+      if (tabEl) { tabEl.style.color = 'var(--red)'; setTimeout(() => tabEl.style.color = '', 3000); }
+    }
+
+    // Spotlight
+    if (d.current_player) {
+      if (!lastPlayer || lastPlayer.id !== d.current_player.id) {
+        lastPlayer = d.current_player;
+        renderSpotlight(d.current_player, d.current_bid, d.current_bidder);
+      } else {
+        const bidEl = document.getElementById('liveBidAmt');
+        const teamEl = document.getElementById('liveBidTeam');
+        if (bidEl && d.current_bid !== lastBid) {
+          bidEl.textContent = '₹' + d.current_bid;
+          bidEl.style.animation = 'none';
+          bidEl.offsetHeight;
+          bidEl.style.animation = 'bidPop 0.35s cubic-bezier(0.175,0.885,0.32,1.275) 1';
+          if (d.current_bidder && teamEl) teamEl.textContent = '🏅 ' + d.current_bidder.name;
+        }
+      }
+      lastBid = d.current_bid;
+    } else {
+      if (d.status === 'completed') {
+        renderWaiting('AUCTION COMPLETE 🏆', 'Thank you for watching!');
+        document.getElementById('liveLabel').textContent = 'ENDED';
+        document.getElementById('liveDot').style.background = 'var(--muted)';
+        document.getElementById('liveDot').style.boxShadow = 'none';
+        document.getElementById('liveDot').style.animation = 'none';
+      } else if (d.status === 'active' && lastPlayer) {
+        if (lastStatus !== 'waiting') {
+          lastStatus = 'waiting';
+          renderWaiting('Next player coming up...', 'Stand by');
+        }
+        lastPlayer = null;
+      } else {
+        renderWaiting('AUCTION STARTING SOON', 'Stand by...');
+      }
+    }
+  } catch(e) {
+    document.getElementById('lastUpdate').textContent = '⚠️ Connection issue...';
+  }
+}
+
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

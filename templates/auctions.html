@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Auctions — CricBid Pro{% endblock %}
+{% block page_title %}Auctions{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('create_auction') }}" class="btn btn-gold">+ Create Auction</a>
+{% endblock %}
+
+{% block content %}
+{% if auctions %}
+<div style="display:grid;gap:16px">
+  {% for a in auctions %}
+  <div class="card" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+    <div style="flex:1">
+      <div style="font-family:'Teko',sans-serif;font-size:26px;font-weight:700">{{ a.title }}</div>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px">
+        Created: {{ a.created_at[:10] }} &nbsp;|&nbsp; Increment: ₹{{ a.bid_increment }} &nbsp;|&nbsp; Budget/Team: ₹{{ a.total_budget_per_team }}
+      </div>
+    </div>
+    <div>
+      {% if a.status == 'active' %}<span class="badge badge-active" style="font-size:14px;padding:6px 14px">🔴 LIVE</span>
+      {% elif a.status == 'completed' %}<span class="badge badge-completed" style="font-size:14px;padding:6px 14px">✅ Completed</span>
+      {% else %}<span class="badge badge-pending" style="font-size:14px;padding:6px 14px">⏳ Pending</span>{% endif %}
+    </div>
+    <a href="{{ url_for('auction_room', aid=a.id) }}" class="btn btn-primary">Open Room →</a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:60px">
+  <div style="font-size:56px;margin-bottom:16px">🏆</div>
+  <div style="font-size:22px;font-family:'Teko',sans-serif;margin-bottom:8px">No Auctions Yet</div>
+  <div style="color:var(--muted);margin-bottom:24px">Create your first IPL-style auction</div>
+  <a href="{{ url_for('create_auction') }}" class="btn btn-gold btn-lg">Create Auction</a>
+</div>
+{% endif %}
+{% endblock %}

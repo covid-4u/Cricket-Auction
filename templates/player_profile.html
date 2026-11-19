@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% block title %}{{ player.name }} — CricBid Pro{% endblock %}
+{% block page_title %}Player Profile{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('players') }}" class="btn btn-ghost">← All Players</a>
+  <a href="{{ url_for('edit_player', pid=player.id) }}" class="btn btn-primary" style="margin-left:8px">Edit</a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.profile-hero {
+  background: linear-gradient(135deg, var(--dark3), #1e1826);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 40px; display: flex; gap: 40px; align-items: flex-start;
+  position: relative; overflow: hidden; margin-bottom: 24px;
+}
+.profile-hero::before {
+  content: ''; position: absolute; top: -80px; right: -80px;
+  width: 280px; height: 280px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(108,99,255,0.12), transparent 70%);
+}
+.profile-photo {
+  width: 200px; height: 240px; border-radius: 16px;
+  object-fit: cover; border: 3px solid var(--gold);
+  box-shadow: 0 0 40px rgba(255,215,0,0.15); flex-shrink: 0;
+  background: var(--dark4); display: flex; align-items: center; justify-content: center;
+}
+.profile-name {
+  font-family: 'Teko', sans-serif; font-size: 60px; font-weight: 700;
+  line-height: 1; color: white;
+}
+.profile-type {
+  font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700;
+  color: var(--gold); text-transform: uppercase; letter-spacing: 3px; margin-top: 6px;
+}
+.stat-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 30px; padding: 8px 16px; margin: 4px 4px 4px 0;
+  font-size: 13px;
+}
+.stat-pill .label { color: var(--muted); font-size: 11px; }
+.stat-pill .value { font-weight: 600; }
+
+.type-badge-xl {
+  display: inline-block; padding: 8px 20px; border-radius: 30px;
+  font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: rgba(108,99,255,0.15); color: var(--accent);
+  border: 1px solid rgba(108,99,255,0.3);
+}
+
+.bid-timeline { position: relative; padding-left: 24px; }
+.bid-timeline::before {
+  content: ''; position: absolute; left: 8px; top: 0; bottom: 0;
+  width: 2px; background: var(--border);
+}
+.bid-timeline-item {
+  position: relative; margin-bottom: 16px;
+  background: var(--dark3); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px;
+}
+.bid-timeline-item::before {
+  content: ''; position: absolute; left: -20px; top: 50%; transform: translateY(-50%);
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--dark);
+}
+.bid-timeline-item:first-child { background: rgba(255,215,0,0.05); border-color: rgba(255,215,0,0.2); }
+.bid-timeline-item:first-child::before { background: var(--gold); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-hero">
+  {% if player.photo %}
+    <img src="{{ url_for('static', filename=player.photo) }}" class="profile-photo">
+  {% else %}
+    <div class="profile-photo"><span style="font-size:80px;opacity:0.2">🧑</span></div>
+  {% endif %}
+  <div style="flex:1;position:relative;z-index:1">
+    <div class="profile-name">{{ player.name }}</div>
+    <div class="profile-type">{{ player.type }}</div>
+    <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:4px">
+      <span class="stat-pill">🏢 <span class="value">{{ player.department }}</span></span>
+      <span class="stat-pill">💰 Base: <span class="value" style="color:var(--gold)">₹{{ player.base_price }}</span></span>
+      {% if player.sold_price %}
+        <span class="stat-pill">🔨 Sold: <span class="value" style="color:var(--green)">₹{{ player.sold_price }}</span></span>
+        <span class="stat-pill">📈 Premium: <span class="value" style="color:var(--accent)">+{{ ((player.sold_price - player.base_price) / player.base_price * 100)|round|int }}%</span></span>
+      {% endif %}
+    </div>
+
+    {% if player.is_sold and player.team_name %}
+      <div style="margin-top:20px;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);border-radius:12px;padding:16px;display:inline-flex;align-items:center;gap:14px">
+        {% if player.team_logo %}
+          <img src="{{ url_for('static', filename=player.team_logo) }}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)">
+        {% else %}
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:22px">🛡️</div>
+        {% endif %}
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Acquired by</div>
+          <div style="font-family:'Teko',sans-serif;font-size:24px;color:var(--green)">{{ player.team_name }}</div>
+          {% if player.owner_name %}
+            <div style="font-size:12px;color:var(--muted)">Owner: {{ player.owner_name }}</div>
+          {% endif %}
+        </div>
+        <span class="badge badge-sold" style="font-size:14px;padding:6px 14px;margin-left:8px">✅ SOLD</span>
+      </div>
+    {% else %}
+      <div style="margin-top:20px">
+        <span class="badge badge-pending" style="font-size:14px;padding:8px 18px">⏳ Available for Auction</span>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📊 Bid History</span>
+      <span style="color:var(--muted);font-size:13px">{{ bid_history|length }} bids</span>
+    </div>
+    {% if bid_history %}
+      <div class="bid-timeline">
+        {% for b in bid_history %}
+        <div class="bid-timeline-item">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong>{{ b.team_name }}</strong>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">{{ b.auction_title }}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:'Teko',sans-serif;font-size:22px;color:var(--gold)">₹{{ b.bid_amount }}</div>
+              <div style="font-size:10px;color:var(--muted)">{{ b.timestamp[:16] }}</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align:center;padding:40px;color:var(--muted)">
+        <div style="font-size:36px;margin-bottom:8px">📋</div>
+        <div>No bids placed yet</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:16px">🏏 Player Info</div>
+      <div style="display:grid;gap:12px">
+        {% set type_colors = {'Batsman':'#FF6B6B','Bowler':'#4ECDC4','Fielder':'#45B7D1','All-Rounder':'#FFD700','Wicket-Keeper':'#A78BFA'} %}
+        {% set type_icons = {'Batsman':'🏏','Bowler':'🎳','Fielder':'🤸','All-Rounder':'⭐','Wicket-Keeper':'🥅'} %}
+        <div style="background:var(--dark3);border-radius:10px;padding:14px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Specialization</div>
+          <div style="font-size:28px;margin-bottom:4px">{{ type_icons.get(player.type, '🏏') }}</div>
+          <div style="font-family:'Teko',sans-serif;font-size:22px;color:{{ type_colors.get(player.type, 'var(--accent)') }}">{{ player.type }}</div>
+        </div>
+        <div style="background:var(--dark3);border-radius:10px;padding:14px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Department</div>
+          <div style="font-weight:600;font-size:16px">{{ player.department }}</div>
+        </div>
+        <div style="background:var(--dark3);border-radius:10px;padding:14px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Registered</div>
+          <div style="font-weight:600">{{ player.created_at[:10] }}</div>
+        </div>
+        {% if bid_history %}
+        <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:10px;padding:14px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Highest Bid Received</div>
+          <div style="font-family:'Teko',sans-serif;font-size:32px;color:var(--gold)">₹{{ bid_history[0].bid_amount }}</div>
+          <div style="font-size:12px;color:var(--muted)">by {{ bid_history[0].team_name }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

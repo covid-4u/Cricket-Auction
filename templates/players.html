@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Players — CricBid Pro{% endblock %}
+{% block page_title %}Player Registry{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('add_player') }}" class="btn btn-gold">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Register Player
+  </a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.filter-bar { display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; align-items:center; }
+.filter-bar input, .filter-bar select { width:auto; padding:8px 14px; font-size:13px; }
+.players-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+  <input type="text" id="search" placeholder="🔍 Search players..." style="min-width:220px">
+  <select id="filterType">
+    <option value="">All Types</option>
+    {% for t in types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+  </select>
+  <select id="filterDept">
+    <option value="">All Departments</option>
+    {% for d in departments %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+  </select>
+  <select id="filterStatus">
+    <option value="">All Status</option>
+    <option value="available">Available</option>
+    <option value="sold">Sold</option>
+  </select>
+  <span style="margin-left:auto;color:var(--muted);font-size:13px">{{ players|length }} players</span>
+</div>
+
+{% if players %}
+<div class="players-grid" id="playersGrid">
+  {% for p in players %}
+  <div class="player-card" data-name="{{ p.name|lower }}" data-type="{{ p.type }}" data-dept="{{ p.department }}" data-status="{{ 'sold' if p.is_sold else 'available' }}">
+    <div class="player-card-img">
+      {% if p.photo %}
+        <img src="{{ url_for('static', filename=p.photo) }}" style="width:100%;height:100%;object-fit:cover">
+      {% else %}
+        <div style="font-size:48px;opacity:0.3">🧑</div>
+      {% endif %}
+    </div>
+    <div class="player-card-body">
+      <div class="player-card-name">{{ p.name }}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+        <span class="badge badge-type">{{ p.type }}</span>
+        {% if p.is_sold %}
+          <span class="badge badge-sold">Sold</span>
+        {% else %}
+          <span class="badge badge-pending">Available</span>
+        {% endif %}
+      </div>
+      <div class="player-card-meta">🏢 {{ p.department }}</div>
+      <div class="player-card-meta" style="margin-top:4px">
+        💰 Base: <strong style="color:var(--gold)">₹{{ p.base_price }}</strong>
+        {% if p.sold_price %}/ Sold: <strong style="color:var(--green)">₹{{ p.sold_price }}</strong>{% endif %}
+      </div>
+      {% if p.team_name %}
+        <div class="player-card-meta" style="margin-top:4px">🛡️ {{ p.team_name }}</div>
+      {% endif %}
+      <div style="display:flex;gap:6px;margin-top:12px">
+        <a href="{{ url_for('player_profile', pid=p.id) }}" class="btn btn-primary btn-sm">View</a>
+        <a href="{{ url_for('edit_player', pid=p.id) }}" class="btn btn-ghost btn-sm">Edit</a>
+        <a href="{{ url_for('delete_player', pid=p.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ p.name }}?')">Del</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+  <div class="card" style="text-align:center;padding:60px">
+    <div style="font-size:56px;margin-bottom:16px">🏏</div>
+    <div style="font-size:22px;font-family:'Teko',sans-serif;margin-bottom:8px">No Players Yet</div>
+    <div style="color:var(--muted);margin-bottom:24px">Register your first player to get started</div>
+    <a href="{{ url_for('add_player') }}" class="btn btn-gold btn-lg">Register First Player</a>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const search = document.getElementById('search');
+const filterType = document.getElementById('filterType');
+const filterDept = document.getElementById('filterDept');
+const filterStatus = document.getElementById('filterStatus');
+
+function filterPlayers() {
+  const s = search.value.toLowerCase();
+  const t = filterType.value;
+  const d = filterDept.value;
+  const st = filterStatus.value;
+  document.querySelectorAll('.player-card').forEach(card => {
+    const match = card.dataset.name.includes(s)
+      && (t === '' || card.dataset.type === t)
+      && (d === '' || card.dataset.dept === d)
+      && (st === '' || card.dataset.status === st);
+    card.style.display = match ? '' : 'none';
+  });
+}
+[search, filterType, filterDept, filterStatus].forEach(el => el.addEventListener('input', filterPlayers));
+</script>
+{% endblock %}
